@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+    <script src='https://code.jquery.com/jquery-3.4.0.min.js'></script>
+
+    <style type="text/css">
+  #container {
+    margin:1%;
+    padding:10px;
+    border-bottom:2px solid #d0d0d0;
+    border-radius: 4px;
+  }
+  .controls {
+  position: absolute;
+  right: 23px;
+  top: 15px;
+  display: grid;
+  grid-gap: 5px;
+  }
+  button {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    display:grid;
+    border-radius:50% !important;
+    background: rgba(240, 240, 240, 0.8);
+    color: darkgrey;
+    border: 1px solid #aaaaaa;
+    user-select: none;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  button:active {
+    background: rgba(200, 200, 200, 0.8);
+  }
+  button:focus {
+    outline: 0;
+  }
+  circle {
+    fill: #F0F;
+    fill-opacity:0.5;
+    stroke: steelblue;
+  }
+  circle:hover {
+    fill: red !important
+  }
+
+
+
+    </style>
+  </head>
+
+  <body onload="sizeChange()">
+
+    <div id="container"></div>
+    <div class="controls">
+      <button id="zoom_in">+</button>
+      <button id="zoom_out">-</button>
+      <button id="reset">.</button>
+    </div>
+
+  <script type="text/javascript">
+  
+
+
+  //zoom functions!
+  //this includes a free zoom with a trackpad/finger gesture
+  //and button functionalities
+  //and scale extent limits
+  //soon need panning extent limits
+
+  function freeZoom() {
+//    svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")") }
+    svg.attr("transform", d3.event.transform); }
+
+  var mapZoom = d3.zoom()
+    .on("zoom", freeZoom)
+    .scaleExtent([0.9, 30]);
+
+  d3.select("#reset").on("click", function() {
+    svg.transition().duration(300).call(mapZoom.transform, d3.zoomIdentity);
+  });
+  
+  d3.select("#zoom_in").on("click", function() {
+      mapZoom.scaleBy(svg.transition().duration(300), 1.5);
+  }); 
+  
+  d3.select("#zoom_out").on("click", function() {
+      mapZoom.scaleBy(svg.transition().duration(300), .7);
+  });
+
+  var width = "100%",
+    height = "100%",
+    scale = 6400;
+
+//this one stutters
+  var svg = d3.select("#container")
+    .append("svg")
+    .attr("width", width)
+        .append("g")
+    .attr("height", height)
+        .append("g")
+    .call(mapZoom);
+
+  var projection = d3.geoAlbersUsa().scale(scale).translate([1350, 400]);
+  
+  var path = d3.geoPath()
+    .projection(projection);
+  
+  d3.json("quantfile.json", function(error, us) {
+    if (error) throw error;
+
+    svg.append("g")
+        .attr("fill", "#fff")
+      .selectAll("path")
+      .data(topojson.feature(us, us.objects.counties).features)
+      .enter().append("path")
+        .attr("d", path);
+
+    svg.append("path")
+        .attr("fill", "none")
+        .attr("stroke", "#000")
+        .attr("stroke-width", 0.3)
+        .attr("d", path(topojson.feature(us, us.objects.counties, function(a, b) { return a !== b; })));
+
+    svg.append("path")
+        .attr("fill", "none")
+        .attr("stroke", "#000")
+        .attr("stroke-width", 1.5)
+        .attr("d", path(topojson.feature(us, us.objects.states, function(a, b) { return a !== b; })));
+
+    svg.selectAll("circle")
+        .data(topojson.feature(us, us.objects.counties).features)
+      .enter().append("circle")
+        .attr("transform", function(d) { return "translate(" + path.centroid(d) + ")"; })
+        .attr("r", function(d) { return Math.sqrt(path.area(d) / Math.PI); })
+      .enter().append("circle")
+        .attr("class", "circle");
+  });
+
+  d3.select(window)
+      .on("resize", sizeChange);
+
+  function sizeChange() {
+      d3.select("g").attr("transform", "scale(" + $("#container").width()/1000 + ")");
+      $("svg").height($("#container").width()*0.618);
+  }
+
+  </script>
+  </body>
+</html>
